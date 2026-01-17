@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { saveUser, getUserByEmail, setCurrentUser, generateId } from '@/lib/storage';
-import { User } from '@/lib/types';
+import { authApi } from '@/lib/api';
+import { setAuthToken, setCurrentUser } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,60 +12,57 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
+    setLoading(true);
 
-    if (isLogin) {
-      // Login
-      const user = getUserByEmail(email);
-      if (!user) {
-        setErro('Usuário não encontrado');
-        return;
+    try {
+      if (isLogin) {
+        // Login
+        const response = await authApi.login(email, senha);
+        setAuthToken(response.token);
+        setCurrentUser(response.user);
+        router.push('/grupos');
+      } else {
+        // Cadastro
+        if (!nome || !email || !senha) {
+          setErro('Preencha todos os campos');
+          setLoading(false);
+          return;
+        }
+        const response = await authApi.register(nome, email, senha);
+        setAuthToken(response.token);
+        setCurrentUser(response.user);
+        router.push('/grupos');
       }
-      setCurrentUser(user);
-      router.push('/grupos');
-    } else {
-      // Cadastro
-      if (!nome || !email || !senha) {
-        setErro('Preencha todos os campos');
-        return;
-      }
-      if (getUserByEmail(email)) {
-        setErro('Este email já está em uso');
-        return;
-      }
-      const newUser: User = {
-        id: generateId(),
-        nome,
-        email,
-      };
-      saveUser(newUser);
-      setCurrentUser(newUser);
-      router.push('/grupos');
+    } catch (error: any) {
+      setErro(error.message || 'Erro ao realizar operação');
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#1a1f2e] px-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl border border-gray-700 bg-gray-800/50 backdrop-blur-sm p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f] px-4">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-gray-800 bg-[#1a1a1a] p-8 shadow-xl">
         <div className="text-center">
           <div className="mb-4 flex justify-center">
-            <div className="text-4xl">🚀</div>
+            <span className="text-4xl">🚀</span>
           </div>
-          <h1 className="text-3xl font-bold text-white">Squad Goals</h1>
+          <h1 className="text-3xl font-bold text-white">Metas</h1>
           <p className="mt-2 text-gray-400">Acompanhe suas metas com clareza</p>
         </div>
 
-        <div className="flex rounded-lg border border-gray-600 bg-gray-700 p-1">
+        <div className="flex rounded-lg border border-gray-800 bg-[#242424] p-1">
           <button
             type="button"
             onClick={() => setIsLogin(true)}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
               isLogin
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-300 hover:bg-gray-600'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-400 hover:text-white'
             }`}
           >
             Entrar
@@ -75,8 +72,8 @@ export default function LoginPage() {
             onClick={() => setIsLogin(false)}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
               !isLogin
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-300 hover:bg-gray-600'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-400 hover:text-white'
             }`}
           >
             Cadastrar
@@ -94,7 +91,7 @@ export default function LoginPage() {
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-white placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-700 bg-[#242424] px-3 py-2 text-white placeholder-gray-500 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
                 placeholder="Seu nome"
               />
             </div>
@@ -109,7 +106,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-white placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-gray-700 bg-[#242424] px-3 py-2 text-white placeholder-gray-500 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
               placeholder="seu@email.com"
               required
             />
@@ -124,23 +121,24 @@ export default function LoginPage() {
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-white placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-gray-700 bg-[#242424] px-3 py-2 text-white placeholder-gray-500 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500"
               placeholder="••••••••"
               required
             />
           </div>
 
           {erro && (
-            <div className="rounded-md bg-red-900/50 border border-red-700 p-3 text-sm text-red-300">
+            <div className="rounded-md bg-red-900/30 border border-red-800 p-3 text-sm text-red-400">
               {erro}
             </div>
           )}
 
           <button
             type="submit"
-            className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+            disabled={loading}
+            className="w-full rounded-md bg-purple-600 px-4 py-2 font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLogin ? 'Entrar' : 'Cadastrar'}
+            {loading ? 'Carregando...' : isLogin ? 'Entrar' : 'Cadastrar'}
           </button>
         </form>
       </div>
