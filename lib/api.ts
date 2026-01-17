@@ -19,7 +19,7 @@ async function request<T>(
   };
 
   if (token) {
-    (headers as Headers).set('Authorization', `Bearer ${token}`);
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {

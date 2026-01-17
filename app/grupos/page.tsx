@@ -54,6 +54,7 @@ export default function GruposPage() {
 
     try {
       setErro('');
+      
       const novoGrupo = await groupsApi.store(nomeGrupo, descricaoGrupo || undefined);
       await loadGrupos();
       setNomeGrupo('');
